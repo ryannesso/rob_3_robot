@@ -1,41 +1,46 @@
+import javafx.animation.ParallelTransition;
+import javafx.animation.RotateTransition;
 import javafx.animation.TranslateTransition;
 import javafx.util.Duration;
-import javafx.scene.Node;
+import javafx.scene.Group;
 
 public class Trajectory {
     private Robot robot;
-    private int[] time = {1, 2, 3, 4 ,5};
-    private TranslateTransition translateTransition;
+
+    // Расстояние между колесами робота
+    private final double L = 20.0; // Подберите точное значение для вашего робота
 
     // Конструктор с передачей робота
-    public Trajectory(Robot robot) {
+    public Trajectory(Robot robot, double[] speeds, int[] time, double[] omega) {
         this.robot = robot;
-        configureTransictional();
+        configureTransictional(speeds, time, omega);
     }
 
-    private void configureTransictional() {
-        // Создаем анимацию и привязываем ее к роботу
-        translateTransition = new TranslateTransition();
-        translateTransition.setNode(robot.getRobotGroup()); // Привязываем к телу робота (или к другому узлу)
-        translateTransition.setDuration(Duration.seconds(time[0])); // Первая продолжительность
-        translateTransition.setByX(300); // Перемещение на 300 пикселей по X
-
-        // Повторение 50 раз
-        translateTransition.setCycleCount(50);
-        translateTransition.setAutoReverse(false);
-        System.out.println("Duration set to: " + time[0] + " seconds");
+    // Метод настройки анимации
+    public void configureTransictional(double[] speeds, int[] time, double[] omega) {
+        startParallelTransition(speeds, time, omega, 0);
     }
 
-    // Метод для запуска анимации с изменяемой продолжительностью
-    public void startAnimation(int index) {
+    // Метод запуска параллельной анимации
+    private void startParallelTransition(double[] speeds, int[] time, double[] omega, int index) {
         if (index >= 0 && index < time.length) {
+            // Создаем анимации перемещения и вращения
+            TranslateTransition translateTransition = new TranslateTransition();
+            translateTransition.setNode(robot.getRobotGroup());
+            translateTransition.setByX(speeds[index] * time[index]);
             translateTransition.setDuration(Duration.seconds(time[index]));
-            System.out.println("Duration set to: " + time[index] + " seconds");
-            translateTransition.play();
-        }
-    }
 
-    public TranslateTransition getTranslateTransition() {
-        return translateTransition;
+            RotateTransition rotateTransition = new RotateTransition();
+            rotateTransition.setNode(robot.getRobotGroup());
+            rotateTransition.setByAngle(omega[index] * time[index]);
+            rotateTransition.setDuration(Duration.seconds(time[index]));
+
+            // Создаем параллельную анимацию
+            ParallelTransition parallelTransition = new ParallelTransition(translateTransition, rotateTransition);
+
+            // При завершении запускаем следующую фазу
+            parallelTransition.setOnFinished(e -> startParallelTransition(speeds, time, omega, index + 1));
+            parallelTransition.play();
+        }
     }
 }
