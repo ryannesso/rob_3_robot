@@ -12,35 +12,34 @@ public class Robot {
     private final Rectangle rightWheel;
 
     public Robot() {
-        // Основная группа для всего робота
+        //robot group
         robotGroup = new Group();
 
-        // === ТЕЛО ===
-        Line body = new Line(-50, 0, 50, 0); // длина 100 пикселей
+        //body
+        Line body = new Line(-10, 0, 10, 0);
         body.setStrokeWidth(4);
         body.setStroke(Color.DARKGRAY);
         Group bodyGroup = new Group(body);
 
-        // === ЛЕВОЕ КОЛЕСО ===
-        leftWheel = new Rectangle(-5, -10, 10, 20); // ширина 10, высота 20
+
+        //left wheel
+        leftWheel = new Rectangle(-5, -5, 10, 10);
         leftWheel.setFill(Color.BLUE);
         leftWheelGroup = new Group(leftWheel);
-        leftWheelGroup.setTranslateX(-50); // левый край тела
+        leftWheelGroup.setTranslateX(-10);
 
-        // === ПРАВОЕ КОЛЕСО ===
-        rightWheel = new Rectangle(-5, -10, 10, 20);
+        //right wheel
+        rightWheel = new Rectangle(-5, -5, 10, 10);
         rightWheel.setFill(Color.RED);
         rightWheelGroup = new Group(rightWheel);
-        rightWheelGroup.setTranslateX(50); // правый край тела
+        rightWheelGroup.setTranslateX(10);
 
-        // === СБОРКА РОБОТА ===
+
         robotGroup.getChildren().addAll(bodyGroup, leftWheelGroup, rightWheelGroup);
 
-        // Начальная ориентация — вперёд по оси X
         robotGroup.setRotate(90);
     }
 
-    // === Геттеры ===
 
     public Group getRobotGroup() {
         return robotGroup;
