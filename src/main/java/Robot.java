@@ -11,35 +11,30 @@ public class Robot {
     private final Rectangle leftWheel;
     private final Rectangle rightWheel;
 
+    private double linearSpeed = 0.0;
+    private double angularSpeed = 0.0;
+
     public Robot() {
-        //robot group
         robotGroup = new Group();
 
-        //body
         Line body = new Line(-10, 0, 10, 0);
         body.setStrokeWidth(4);
         body.setStroke(Color.DARKGRAY);
         Group bodyGroup = new Group(body);
 
-
-        //left wheel
         leftWheel = new Rectangle(-5, -5, 10, 10);
         leftWheel.setFill(Color.BLUE);
         leftWheelGroup = new Group(leftWheel);
         leftWheelGroup.setTranslateX(-10);
 
-        //right wheel
         rightWheel = new Rectangle(-5, -5, 10, 10);
         rightWheel.setFill(Color.RED);
         rightWheelGroup = new Group(rightWheel);
         rightWheelGroup.setTranslateX(10);
 
-
         robotGroup.getChildren().addAll(bodyGroup, leftWheelGroup, rightWheelGroup);
-
         robotGroup.setRotate(90);
     }
-
 
     public Group getRobotGroup() {
         return robotGroup;
@@ -59,5 +54,21 @@ public class Robot {
 
     public Rectangle getRightWheel() {
         return rightWheel;
+    }
+
+    public double getLinearSpeed() {
+        return linearSpeed;
+    }
+
+    public void setLinearSpeed(double linearSpeed) {
+        this.linearSpeed = linearSpeed;
+    }
+
+    public double getAngularSpeed() {
+        return angularSpeed;
+    }
+
+    public void setAngularSpeed(double angularSpeed) {
+        this.angularSpeed = angularSpeed;
     }
 }

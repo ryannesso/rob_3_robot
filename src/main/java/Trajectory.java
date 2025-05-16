@@ -6,8 +6,7 @@ import javafx.animation.ParallelTransition;
 import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.Scene;
-import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyEvent;
+import javafx.scene.control.Label;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Polyline;
 import javafx.util.Duration;
@@ -17,7 +16,7 @@ public class Trajectory {
     private final Pane simulationPane;
 
     private final double L = 0.2;
-    private final double SCALE = 1;
+    private final double SCALE = 10;
 
     private final Polyline trajectoryLine;
     private final Polyline leftWheelLine;
@@ -106,6 +105,7 @@ public class Trajectory {
             sequence.getChildren().addAll(move, rotate);
         }
 
+
         sequence.play();
     }
 
@@ -115,7 +115,7 @@ public class Trajectory {
         double speed = 40;
         double stepTime = 0.05;
         double speedPerStep = speed * stepTime;
-        robot.getRobotGroup().setRotate(0); // Начальное направление — вверх
+        robot.getRobotGroup().setRotate(0);
 
 
         // Первая кривая (левый поворот, радиус R1)
@@ -154,14 +154,20 @@ public class Trajectory {
         sequence.play();
     }
 
-    public void taskFour(Scene scene) {
+    public void taskFour(Scene scene, Label speedLabel) {
         robot.getRobotGroup().setLayoutX(400);
         robot.getRobotGroup().setLayoutY(300);
         robot.getRobotGroup().setRotate(0);
 
+
+
         final double[] speed = {0.0};
         final double[] angularSpeed = {0.0};
         double stepTime = 0.05;
+
+        robot.setLinearSpeed(speed[0]);
+        robot.setAngularSpeed(angularSpeed[0]);
+
 
         scene.setOnKeyPressed(event -> {
             switch (event.getCode()) {
@@ -180,6 +186,12 @@ public class Trajectory {
         });
 
         Timeline controlLoop = new Timeline(new KeyFrame(Duration.seconds(stepTime), e -> {
+            robot.setLinearSpeed(speed[0]);
+            robot.setAngularSpeed(angularSpeed[0]);
+
+            speedLabel.setText(String.format("Rýchlosť: %.2f m/s", speed[0]));
+
+            // Обновляем позицию робота
             double angleRad = Math.toRadians(robot.getRobotGroup().getRotate() - 90);
             double dx = speed[0] * Math.cos(angleRad) * stepTime * SCALE;
             double dy = speed[0] * Math.sin(angleRad) * stepTime * SCALE;
@@ -188,6 +200,7 @@ public class Trajectory {
             robot.getRobotGroup().setLayoutX(robot.getRobotGroup().getLayoutX() + dx);
             robot.getRobotGroup().setLayoutY(robot.getRobotGroup().getLayoutY() + dy);
 
+            // Обновление линий траектории
             double x = robot.getRobotGroup().getLayoutX();
             double y = robot.getRobotGroup().getLayoutY();
             trajectoryLine.getPoints().addAll(x, y);
@@ -228,7 +241,6 @@ public class Trajectory {
         double y = robotGroup.getLayoutY();
         trajectoryLine.getPoints().addAll(x, y);
 
-        // === преобразуем обе позиции через simulationGroup.sceneToLocal(...) ===
         Point2D leftPos = simulationGroup.sceneToLocal(
                 robot.getLeftWheel().localToScene(
                         robot.getLeftWheel().getWidth() / 2 - 9,

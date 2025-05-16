@@ -1,4 +1,6 @@
 // Main.java
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Group;
@@ -12,6 +14,7 @@ import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Polyline;
 import javafx.stage.Stage;
+import javafx.util.Duration;
 
 public class Main extends Application {
     private Pane simulationPane;
@@ -20,6 +23,15 @@ public class Main extends Application {
     private TextField sideInput, r1Input, r2Input, l1Input;
     private Polyline centerLine, leftLine, rightLine;
     private LineChart<Number, Number> speedChart;
+    private Label realTimeSpeedLabel;
+
+    private XYChart.Series<Number, Number> centerSeriesRealtime;
+    private XYChart.Series<Number, Number> leftSeriesRealtime;
+    private XYChart.Series<Number, Number> rightSeriesRealtime;
+    private Timeline realtimeChartUpdater;
+    private double realtimeTime = 0;
+
+    private final double L = 0.2;
 
     @Override
     public void start(Stage stage) {
@@ -28,6 +40,8 @@ public class Main extends Application {
         simulationPane.setPrefSize(1400, 700);
 
         VBox root = new VBox(10);
+        realTimeSpeedLabel = new Label("Rýchlosť: 0.00 m/s");
+        root.getChildren().add(realTimeSpeedLabel);
         root.setPadding(new Insets(10));
 
         sideInput = new TextField();
@@ -94,13 +108,12 @@ public class Main extends Application {
         setupLines();
         simulationGroup.getChildren().addAll(centerLine, leftLine, rightLine, robot.getRobotGroup());
 
-        // Примерные данные скоростей (константные значения на каждом отрезке)
-        int[] time = {0, 5, 10, 15, 20}; // 4 отрезка
+        int[] time = {0, 5, 10, 15, 20};
         double[] speedsLeft = {40, 40, 40, 40};
         double[] speedsRight = {40, 40, 40, 40};
 
         new Trajectory(robot, null, null, null, centerLine, leftLine, rightLine, simulationPane, simulationGroup).taskTwo(sideLength);
-        drawSpeedChart(time, speedsLeft, speedsRight);
+        drawSpeedChartTaskTwo(sideLength);
     }
 
     private void runThreeTask() {
@@ -114,13 +127,12 @@ public class Main extends Application {
         setupLines();
         simulationGroup.getChildren().addAll(centerLine, leftLine, rightLine, robot.getRobotGroup());
 
-        // Пример: сначала дуга, затем прямой отрезок, затем дуга в другую сторону
-        int[] time = {0, 4, 8, 12}; // каждый этап — 4 секунды
-        double[] speedsLeft = {20, 40, 60}; // имитируем разные повороты
+        int[] time = {0, 4, 8, 12};
+        double[] speedsLeft = {20, 40, 60};
         double[] speedsRight = {60, 40, 20};
 
         new Trajectory(robot, null, null, null, centerLine, leftLine, rightLine, simulationPane, simulationGroup).taskThree(R1, L1, R2);
-        drawSpeedChart(time, speedsLeft, speedsRight);
+        drawSpeedChartTaskThree(R1, L1, R2);
     }
 
     private void runFourTask() {
@@ -131,14 +143,12 @@ public class Main extends Application {
         setupLines();
         simulationGroup.getChildren().addAll(centerLine, leftLine, rightLine, robot.getRobotGroup());
 
-        // Пример графика при ручном управлении
-        int[] time = {0, 5, 10, 15, 20};
-        double[] speedsLeft = {0, 0, 0, 0, 0};   // пока пользователь не вводит команды — 0
-        double[] speedsRight = {0, 0, 0, 0, 0};
+        new Trajectory(robot, null, null, null, centerLine, leftLine, rightLine, simulationPane, simulationGroup)
+                .taskFour(simulationPane.getScene(), realTimeSpeedLabel);
 
-        new Trajectory(robot, null, null, null, centerLine, leftLine, rightLine, simulationPane, simulationGroup).taskFour(simulationPane.getScene());
-        drawSpeedChart(time, speedsLeft, speedsRight);
+        startRealtimeSpeedChart(robot);
     }
+
 
 
     private void runSimulation(int[] time, double[] speedsLeft, double[] speedsRight) {
@@ -182,13 +192,19 @@ public class Main extends Application {
         NumberAxis yAxis = new NumberAxis("speed [m/s]", -25, 25, 1);
         speedChart = new LineChart<>(xAxis, yAxis);
         speedChart.setTitle("Rýchlosti kolies a ťažiska");
-        speedChart.setPrefSize(500, 300);
-        speedChart.setLayoutX(850);
+        speedChart.setPrefSize(700, 500);
+        speedChart.setLayoutX(650);
         speedChart.setLayoutY(30);
 
         XYChart.Series<Number, Number> leftSeries = new XYChart.Series<>();
+        leftSeries.setName("Ľavé koleso");
+
         XYChart.Series<Number, Number> rightSeries = new XYChart.Series<>();
+        rightSeries.setName("Pravé koleso");
+
         XYChart.Series<Number, Number> centerSeries = new XYChart.Series<>();
+        centerSeries.setName("Ťažisko");
+
 
         for (int i = 0; i < time.length - 1; i++) {
             int t1 = time[i];
@@ -210,6 +226,169 @@ public class Main extends Application {
         speedChart.getData().addAll(leftSeries, rightSeries, centerSeries);
         simulationPane.getChildren().add(speedChart);
     }
+    private void drawSpeedChartTaskTwo(double sideLengthMeters) {
+        if (speedChart != null) simulationPane.getChildren().remove(speedChart);
+
+        double speed = 40; // [m/s]
+        double stepTime = 0.05; // [s]
+        double duration = sideLengthMeters / speed;
+        double turnDuration = 45 * stepTime;
+
+        int fullSections = 4;
+
+        NumberAxis xAxis = new NumberAxis("time [s]", 0, fullSections * (duration + turnDuration), 1);
+        NumberAxis yAxis = new NumberAxis("speed [m/s]", -speed - 10, speed + 10, 10);
+
+        speedChart = new LineChart<>(xAxis, yAxis);
+        speedChart.setTitle("Rýchlosti kolies a ťažiska (úloha 2)");
+        speedChart.setPrefSize(700, 500);
+        speedChart.setLayoutX(650);
+        speedChart.setLayoutY(30);
+
+        XYChart.Series<Number, Number> leftSeries = new XYChart.Series<>();
+        leftSeries.setName("Ľavé koleso");
+
+        XYChart.Series<Number, Number> rightSeries = new XYChart.Series<>();
+        rightSeries.setName("Pravé koleso");
+
+        XYChart.Series<Number, Number> centerSeries = new XYChart.Series<>();
+        centerSeries.setName("Ťažisko");
+
+
+        double t = 0;
+        for (int i = 0; i < fullSections; i++) {
+            // Прямолинейный участок
+            leftSeries.getData().add(new XYChart.Data<>(t, speed));
+            rightSeries.getData().add(new XYChart.Data<>(t, speed));
+            centerSeries.getData().add(new XYChart.Data<>(t, speed));
+            t += duration;
+            leftSeries.getData().add(new XYChart.Data<>(t, speed));
+            rightSeries.getData().add(new XYChart.Data<>(t, speed));
+            centerSeries.getData().add(new XYChart.Data<>(t, speed));
+
+            // Поворот на месте
+            leftSeries.getData().add(new XYChart.Data<>(t, speed));
+            rightSeries.getData().add(new XYChart.Data<>(t, -speed));
+            centerSeries.getData().add(new XYChart.Data<>(t, 0));
+            t += turnDuration;
+            leftSeries.getData().add(new XYChart.Data<>(t, speed));
+            rightSeries.getData().add(new XYChart.Data<>(t, -speed));
+            centerSeries.getData().add(new XYChart.Data<>(t, 0));
+        }
+
+        speedChart.getData().addAll(leftSeries, rightSeries, centerSeries);
+        simulationPane.getChildren().add(speedChart);
+    }
+    private void drawSpeedChartTaskThree(double R1, double L1, double R2) {
+        double L = 0.2;
+        if (speedChart != null) simulationPane.getChildren().remove(speedChart);
+
+        double speed = 40;
+        double stepTime = 0.05;
+
+        double durationStraight = L1 / speed;
+        double durationTurn1 = Math.PI * R1 / (2 * speed);
+        double durationTurn2 = Math.PI * R2 / (2 * speed);
+
+        NumberAxis xAxis = new NumberAxis("time [s]", 0, durationTurn1 + durationStraight + durationTurn2, 1);
+        NumberAxis yAxis = new NumberAxis("speed [m/s]", -speed - 10, speed + 10, 10);
+
+        speedChart = new LineChart<>(xAxis, yAxis);
+        speedChart.setTitle("Rýchlosti kolies a ťažiska (úloha 3)");
+        speedChart.setPrefSize(700, 500);
+        speedChart.setLayoutX(650);
+        speedChart.setLayoutY(30);
+
+        XYChart.Series<Number, Number> leftSeries = new XYChart.Series<>();
+        leftSeries.setName("Ľavé koleso");
+
+        XYChart.Series<Number, Number> rightSeries = new XYChart.Series<>();
+        rightSeries.setName("Pravé koleso");
+
+        XYChart.Series<Number, Number> centerSeries = new XYChart.Series<>();
+        centerSeries.setName("Ťažisko");
+
+
+        double t = 0;
+
+        // Первая кривая
+        double vLeft1 = speed * (R1 - L / 2) / R1;
+        double vRight1 = speed * (R1 + L / 2) / R1;
+        leftSeries.getData().add(new XYChart.Data<>(t, vLeft1));
+        rightSeries.getData().add(new XYChart.Data<>(t, vRight1));
+        centerSeries.getData().add(new XYChart.Data<>(t, speed));
+        t += durationTurn1;
+        leftSeries.getData().add(new XYChart.Data<>(t, vLeft1));
+        rightSeries.getData().add(new XYChart.Data<>(t, vRight1));
+        centerSeries.getData().add(new XYChart.Data<>(t, speed));
+
+        // Прямой участок
+        leftSeries.getData().add(new XYChart.Data<>(t, speed));
+        rightSeries.getData().add(new XYChart.Data<>(t, speed));
+        centerSeries.getData().add(new XYChart.Data<>(t, speed));
+        t += durationStraight;
+        leftSeries.getData().add(new XYChart.Data<>(t, speed));
+        rightSeries.getData().add(new XYChart.Data<>(t, speed));
+        centerSeries.getData().add(new XYChart.Data<>(t, speed));
+
+        // Вторая кривая
+        double vLeft2 = speed * (R2 + L / 2) / R2;
+        double vRight2 = speed * (R2 - L / 2) / R2;
+        leftSeries.getData().add(new XYChart.Data<>(t, vLeft2));
+        rightSeries.getData().add(new XYChart.Data<>(t, vRight2));
+        centerSeries.getData().add(new XYChart.Data<>(t, speed));
+        t += durationTurn2;
+        leftSeries.getData().add(new XYChart.Data<>(t, vLeft2));
+        rightSeries.getData().add(new XYChart.Data<>(t, vRight2));
+        centerSeries.getData().add(new XYChart.Data<>(t, speed));
+
+        speedChart.getData().addAll(leftSeries, rightSeries, centerSeries);
+        simulationPane.getChildren().add(speedChart);
+    }
+
+    private void startRealtimeSpeedChart(Robot robot) {
+        if (speedChart != null) simulationPane.getChildren().remove(speedChart);
+
+        NumberAxis xAxis = new NumberAxis("Time [s]", 0, 100, 1);
+        NumberAxis yAxis = new NumberAxis("Speed [m/s]", -50, 50, 10);
+
+        speedChart = new LineChart<>(xAxis, yAxis);
+        speedChart.setTitle("Realtime speed (Task 4)");
+        speedChart.setLayoutX(850);
+        speedChart.setLayoutY(30);
+        speedChart.setPrefSize(500, 300);
+
+        centerSeriesRealtime = new XYChart.Series<>();
+        centerSeriesRealtime.setName("Center");
+
+        leftSeriesRealtime = new XYChart.Series<>();
+        leftSeriesRealtime.setName("Left Wheel");
+
+        rightSeriesRealtime = new XYChart.Series<>();
+        rightSeriesRealtime.setName("Right Wheel");
+
+        speedChart.getData().addAll(centerSeriesRealtime, leftSeriesRealtime, rightSeriesRealtime);
+        simulationPane.getChildren().add(speedChart);
+
+        realtimeTime = 0;
+
+        realtimeChartUpdater = new Timeline(new KeyFrame(Duration.seconds(0.1), e -> {
+            double centerSpeed = robot.getLinearSpeed();
+            double angularSpeed = robot.getAngularSpeed();
+            double leftSpeed = centerSpeed - L / 2 * angularSpeed;
+            double rightSpeed = centerSpeed + L / 2 * angularSpeed;
+
+            centerSeriesRealtime.getData().add(new XYChart.Data<>(realtimeTime, centerSpeed));
+            leftSeriesRealtime.getData().add(new XYChart.Data<>(realtimeTime, leftSpeed));
+            rightSeriesRealtime.getData().add(new XYChart.Data<>(realtimeTime, rightSpeed));
+
+            realtimeTime += 0.9;
+        }));
+        realtimeChartUpdater.setCycleCount(Timeline.INDEFINITE);
+        realtimeChartUpdater.play();
+    }
+
+
 
     private double parseInput(String text, double defaultValue) {
         try {
